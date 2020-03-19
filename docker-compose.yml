@@ -1,0 +1,50 @@
+version: '3.7'
+services:
+  airflow:
+    restart: on-failure
+    volumes:
+      - ./dags:/usr/local/airflow/dags
+      - ./plugins:/usr/local/airflow/plugins
+      - ./airflow.cfg:/usr/local/airflow/airflow.cfg
+    build:
+      context: .
+    container_name: airflow
+    command: ["airflow", "webserver"]
+    environment:
+      - AIRFLOW__SCHEDULER__STATSD_ON=True
+      - AIRFLOW__SCHEDULER__STATSD_HOST=graphite-statsd
+      - AIRFLOW__SCHEDULER__STATSD_PORT=8125
+      - AIRFLOW__SCHEDULER__STATSD_PREFIX=airflow
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      - EXECUTOR=LocalExecutor
+    ports:
+      - 8082:8080 # airflow web server listens at port 8080
+
+  postgres:
+    image: postgres:9.6-alpine
+    container_name: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    ports:
+      - 5432:5432
+
+  graphite-statsd:
+    image: graphiteapp/graphite-statsd
+    container_name: graphite-statsd
+    ports:
+      - 8125:8125/udp
+      - 8126:8126
+      - 8085:80
+      - 2003-2004:2003-2004
+      - 2023-2024:2023-2024
+    restart: always
+
+
+
